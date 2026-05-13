@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PurchaseDesk — Invoice Manager</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&family=Fraunces:wght@700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div id="sb-overlay"></div>
+
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-icon">📋</div>
+      <div class="login-logo-name">PurchaseDesk</div>
+    </div>
+    <div class="login-title">PurchaseDesk</div>
+    <div class="login-sub" style="margin-bottom:28px">Sign in with your assigned account. Contact the owner if you need access.</div>
+    <div id="login-err" class="login-err"></div>
+    <div class="login-fg"><label>Email</label><input type="email" id="auth-email" placeholder="your.email@example.com"></div>
+    <div class="login-fg"><label>Password</label><input type="password" id="auth-pass" placeholder="••••••••"></div>
+    <button class="login-btn" id="auth-btn">Sign In</button>
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--sb-border);text-align:center">
+      <span style="font-size:11px;color:var(--sb-text)">Don't have an account? Ask the shop owner to create one for you.</span>
+    </div>
+  </div>
+</div>
+
+<div id="app-shell" style="display:none">
+<div class="app">
+<aside class="sidebar" id="sidebar">
+  <div class="logo">
+    <div class="logo-icon">📋</div>
+    <div class="logo-text"><div class="logo-name">PurchaseDesk</div><div class="logo-ver">v2.0</div></div>
+    <button class="collapse-btn" onclick="window.collapseSidebar()" title="Collapse">◀</button>
+  </div>
+  <nav class="nav">
+    <div class="nav-sec">Workspace</div>
+    <div class="nav-item" data-view="dashboard"     onclick="window.showView('dashboard')"><span class="nav-icon">🏠</span><span class="nav-label">Dashboard</span></div>
+    <div class="nav-item" data-view="plans"         onclick="window.showView('plans')"><span class="nav-icon">📋</span><span class="nav-label">Purchase Plans</span></div>
+    <div class="nav-item" data-view="invoices"      onclick="window.showView('invoices')"><span class="nav-icon">🧾</span><span class="nav-label">Invoices</span></div>
+    <div class="nav-item" data-view="comparison"    onclick="window.showView('comparison')"><span class="nav-icon">📊</span><span class="nav-label">Plan Comparison</span></div>
+    <div class="nav-item" data-view="items"         onclick="window.showView('items')"><span class="nav-icon">📦</span><span class="nav-label">Items</span></div>
+    <div class="nav-item" data-view="suppliers"     onclick="window.showView('suppliers')"><span class="nav-icon">🏪</span><span class="nav-label">Suppliers</span></div>
+    <div class="nav-sec">Settings</div>
+    <div class="nav-item" data-view="settings-view" onclick="window.showView('settings-view')"><span class="nav-icon">🌍</span><span class="nav-label">Country Rates</span></div>
+    <div class="nav-item" data-view="staff" id="nav-admin" onclick="window.showView('staff')" style="display:none"><span class="nav-icon">👥</span><span class="nav-label">Staff Accounts</span></div>
+  </nav>
+  <div class="sb-footer">
+    <div class="sb-user">
+      <div class="sb-avatar" id="sb-avatar">?</div>
+      <div class="sb-email" id="user-email">—</div>
+      <button class="sb-signout" id="sb-signout-btn">Out</button>
+    </div>
+    <div class="sb-rates-head">Country Rates</div>
+    <div id="sb-countries"></div>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="window.toggleSidebar()">☰</button>
+      <div class="topbar-title" id="view-title">Dashboard</div>
+      <span class="topbar-crumb" id="view-crumb">Overview</span>
+    </div>
+    <div class="topbar-right">
+      <span class="saving-dot" id="saving-dot"></span>
+      <span class="saving-label" id="saving-label">Saving…</span>
+      <button class="btn btn-ghost btn-sm" onclick="window.exportData()">↓ Export</button>
+      <button class="btn btn-primary btn-sm" id="main-action-btn" style="display:none">＋</button>
+    </div>
+  </div>
+
+  <div class="content" id="view-dashboard">
+    <div id="dashboard-body"><div class="empty-state"><div class="empty-icon">🏠</div><div class="empty-title">Loading…</div></div></div>
+  </div>
+
+  <div class="content" id="view-plans" style="display:none">
+    <div class="section-header"><span class="section-title">Purchase Plans</span><span class="pill" id="plan-count">0 plans</span></div>
+    <div class="table-card" style="overflow:auto">
+      <table><thead><tr><th>Plan #</th><th>Trip Name</th><th>Supplier</th><th>Dept.</th><th>Approved Budget</th><th>Actual Cost</th><th>Approved By</th><th>Status</th><th style="text-align:center">Actions</th></tr></thead><tbody id="plan-tbody"></tbody></table>
+    </div>
+  </div>
+
+  <div class="content" id="view-invoices" style="display:none">
+    <div class="filter-bar">
+      <div class="search-wrap"><input type="text" placeholder="Search invoices…" id="search-input" style="min-width:200px"></div>
+      <select id="filter-status" style="width:140px"><option value="">All Statuses</option><option value="received">Received</option><option value="pending">Pending</option><option value="partial">Partial</option></select>
+      <select id="filter-supplier" style="width:170px"><option value="">All Suppliers</option></select>
+    </div>
+    <div class="section-header"><span class="section-title">All Invoices</span><span class="pill" id="inv-count">0 invoices</span></div>
+    <div class="table-card" style="overflow:auto">
+      <table><thead><tr><th>#</th><th>Invoice No.</th><th>Supplier</th><th>Country</th><th>Received</th><th>Items</th><th>FOB Total</th><th>Invoice MVR</th><th>Avg Margin</th><th>Status</th><th style="text-align:center">Actions</th></tr></thead><tbody id="invoice-tbody"></tbody></table>
+    </div>
+  </div>
+
+  <div class="content" id="view-comparison" style="display:none">
+    <div id="comparison-body">
+      <div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">No comparison selected</div><div class="empty-sub">Go to Purchase Plans and click 📊 on a plan</div>
+      <div style="margin-top:16px"><button class="btn btn-primary" onclick="window.showView('plans')">Go to Purchase Plans</button></div></div>
+    </div>
+  </div>
+
+  <div class="content" id="view-items" style="display:none">
+    <div class="filter-bar">
+      <div class="search-wrap"><input type="text" placeholder="Search by name, code…" id="item-search" style="min-width:200px"></div>
+      <select id="item-filter-supplier" style="width:170px"><option value="">All Suppliers</option></select>
+    </div>
+    <div class="section-header"><span class="section-title">All Purchased Items</span><span class="pill" id="items-count">0 items</span></div>
+    <div class="table-card" style="overflow:auto">
+      <table><thead><tr><th>Code</th><th>Item #</th><th>Name</th><th>Supplier</th><th>Invoice</th><th>Country</th><th>UOM</th><th>Qty</th><th>FOB</th><th>Cost Rate</th><th>Cost MVR</th><th>Sell Price</th><th>Final Price</th><th>Margin %</th><th>Date</th></tr></thead><tbody id="items-tbody"></tbody></table>
+    </div>
+  </div>
+
+  <div class="content" id="view-suppliers" style="display:none">
+    <div class="section-header"><span class="section-title">Suppliers</span><button class="btn btn-primary btn-sm" onclick="window.openAddSupplier()">＋ Add</button></div>
+    <div class="table-card" style="overflow:auto">
+      <table><thead><tr><th>Supplier Name</th><th>Country</th><th>Contact</th><th>Email</th><th>Invoices</th><th>Total Spent (MVR)</th><th>Actions</th></tr></thead><tbody id="suppliers-tbody"></tbody></table>
+    </div>
+  </div>
+
+  <div class="content" id="view-settings-view" style="display:none">
+    <div class="section-header"><span class="section-title">Country Rate Master</span></div>
+    <div class="formula-box" style="margin-bottom:18px">
+      <strong>Cost Rate</strong> = (MVR/USD ÷ Ccy/USD) × (1+COF%) &nbsp;|&nbsp; <strong>Cost</strong> = FOB × Rate &nbsp;|&nbsp; <strong>Sell</strong> = Cost × (1+Markup%) &nbsp;|&nbsp; <strong>Final</strong> = Sell × (1+GST%)
+    </div>
+    <div class="table-card" style="padding:20px;margin-bottom:18px">
+      <div class="modal-sec-title" id="cr-form-label">Add New Country</div>
+      <div class="grid3" style="margin-bottom:14px">
+        <div class="fg"><label>Country Name *</label><input type="text" id="cr-name" placeholder="United Arab Emirates"></div>
+        <div class="fg"><label>Currency Code *</label><input type="text" id="cr-code" placeholder="AED" maxlength="6"></div>
+        <div class="fg"><label>Symbol</label><input type="text" id="cr-sym" placeholder="د.إ" maxlength="6"></div>
+        <div class="fg"><label>Currency / USD *</label><input type="number" id="cr-cpy" placeholder="3.6725" step="0.0001" min="0.0001"></div>
+        <div class="fg"><label>MVR / USD *</label><input type="number" id="cr-mvr" placeholder="15.42" step="0.0001" min="0.0001"></div>
+        <div class="fg"><label>COF %</label><input type="number" id="cr-cof" placeholder="15" step="0.1" min="0"></div>
+        <div class="fg"><label>Markup %</label><input type="number" id="cr-mup" placeholder="100" step="1" min="0"></div>
+        <div class="fg"><label>GST %</label><input type="number" id="cr-gst" placeholder="8" step="0.1" min="0"></div>
+        <div class="fg" style="justify-content:flex-end"><label>&nbsp;</label>
+          <div style="display:flex;gap:7px">
+            <button class="btn btn-ghost btn-sm" id="cr-cancel-btn" style="display:none" onclick="window.clearCrForm()">Cancel</button>
+            <button class="btn btn-primary btn-sm" id="cr-save-btn" onclick="window.saveCountry()">Add Country</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="table-card" style="overflow:auto">
+      <table><thead><tr><th>Country</th><th>Code</th><th>Symbol</th><th>Ccy/USD</th><th>MVR/USD</th><th>COF%</th><th>Markup%</th><th>GST%</th><th>Cost Rate</th><th style="text-align:center">Actions</th></tr></thead><tbody id="countries-tbody"></tbody></table>
+    </div>
+  </div>
+
+  <!-- STAFF ACCOUNTS VIEW (owner only) -->
+  <div class="content" id="view-staff" style="display:none">
+    <div class="section-header">
+      <span class="section-title">Staff Accounts</span>
+      <span class="pill" style="background:rgba(220,38,38,.1);color:var(--red)">Owner Only</span>
+    </div>
+    <div class="table-card" style="padding:22px;margin-bottom:20px">
+      <div class="modal-sec-title">Create New Staff Account</div>
+      <div style="background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:8px;padding:11px 14px;margin-bottom:14px;font-size:12px;color:var(--amber)">
+        &#x26A0; <strong>You control access.</strong> Staff cannot self-register. Create their login here and share credentials with them directly.
+      </div>
+      <div class="grid3" style="margin-bottom:14px">
+        <div class="fg"><label>Full Name *</label><input type="text" id="staff-name" placeholder="Ahmed Hassan"></div>
+        <div class="fg"><label>Email Address *</label><input type="email" id="staff-email" placeholder="staff@yourdomain.com"></div>
+        <div class="fg"><label>Temporary Password *</label><input type="password" id="staff-pass" placeholder="Min 6 characters" autocomplete="new-password"></div>
+        <div class="fg"><label>Role</label>
+          <select id="staff-role">
+            <option value="staff">Staff</option>
+            <option value="manager">Manager</option>
+          </select>
+        </div>
+        <div class="fg span2" style="justify-content:flex-end"><label>&nbsp;</label>
+          <button class="btn btn-primary" id="create-staff-btn" onclick="window.createStaff()" style="align-self:flex-end">&#xFF0B; Create Account</button>
+        </div>
+      </div>
+    </div>
+    <div class="section-title" style="margin-bottom:12px">All Staff Accounts</div>
+    <div class="table-card" style="overflow:auto">
+      <table><thead><tr>
+        <th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Created</th><th style="text-align:center">Actions</th>
+      </tr></thead><tbody id="staff-tbody"></tbody></table>
+    </div>
+  </div>
+
+</div></div></div>
+
+<div class="modal-overlay" id="invoice-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div><div class="modal-title" id="modal-title">New Invoice</div><div class="modal-sub">Select country of origin, then add line items</div></div>
+      <button class="modal-close" onclick="window.closeModal('invoice-modal')">&#x2715;</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:20px">
+        <div class="modal-sec-title">Invoice Details</div>
+        <div class="grid3">
+          <div class="fg"><label>Invoice Number</label><input type="text" id="inv-number" placeholder="INV-2025-001"></div>
+          <div class="fg"><label>Supplier / Shop Name *</label><input type="text" id="inv-supplier" placeholder="Al Baraka Trading" list="supplier-list"><datalist id="supplier-list"></datalist></div>
+          <div class="fg"><label>Status</label><select id="inv-status"><option value="received">Received</option><option value="pending">Pending</option><option value="partial">Partial</option></select></div>
+          <div class="fg"><label>Order Date</label><input type="date" id="inv-order-date"></div>
+          <div class="fg"><label>Received Date *</label><input type="date" id="inv-received-date"></div>
+          <div class="fg"><label>Payment Terms</label><input type="text" id="inv-payment" placeholder="30 days, LC, TT..."></div>
+          <div class="fg"><label>Freight / Shipping (MVR)</label><input type="number" id="inv-freight" value="0" min="0" oninput="window.updateTotals()"></div>
+          <div class="fg span2"><label>Notes</label><input type="text" id="inv-notes" placeholder="Notes..."></div>
+        </div>
+      </div>
+      <div style="margin-bottom:20px">
+        <div class="modal-sec-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span>Country of Origin &amp; Pricing Rates</span>
+          <button class="btn btn-ghost btn-xs" onclick="window.closeModal('invoice-modal');window.showView('settings-view')" tabindex="-1">&#x270F; Edit Rates</button>
+        </div>
+        <div style="display:flex;align-items:flex-end;gap:12px;margin-bottom:12px">
+          <div class="fg" style="flex:0 0 300px">
+            <label>Country of Origin *</label>
+            <select id="inv-country-origin" onchange="window.onCountrySelect()"><option value="">&#x2014; Select Country &#x2014;</option></select>
+          </div>
+          <div id="country-note" style="font-size:12px;color:var(--muted);padding-bottom:9px;display:none">Rates from <strong>Country Rate Master</strong>. <span style="color:var(--teal);cursor:pointer" onclick="window.closeModal('invoice-modal');window.showView('settings-view')">Edit there.</span></div>
+        </div>
+        <div id="rate-display" style="display:none">
+          <div class="rate-panel-wrap">
+            <div class="rate-panel-head">
+              <span class="rate-panel-label" id="rp-title">RATE DETAILS</span>
+              <span class="rate-panel-badge">Cost Rate: <span id="rp-rate">&#x2014;</span></span>
+            </div>
+            <div class="rate-panel-grid">
+              <div class="rp-cell"><div class="rp-lbl">Currency</div><div class="rp-val" id="rp-currency">&#x2014;</div></div>
+              <div class="rp-cell"><div class="rp-lbl">Ccy/USD</div><div class="rp-val" id="rp-cpy">&#x2014;</div></div>
+              <div class="rp-cell"><div class="rp-lbl">MVR/USD</div><div class="rp-val" id="rp-mvr">&#x2014;</div></div>
+              <div class="rp-cell"><div class="rp-lbl">COF%</div><div class="rp-val" id="rp-cof">&#x2014;</div></div>
+              <div class="rp-cell"><div class="rp-lbl">Markup%</div><div class="rp-val" id="rp-mup">&#x2014;</div></div>
+              <div class="rp-cell"><div class="rp-lbl">GST%</div><div class="rp-val" id="rp-gst">&#x2014;</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px">
+          <div class="modal-sec-title" style="margin-bottom:0;border:none;padding:0">Line Items</div>
+          <button class="btn btn-outline btn-sm" onclick="window.addItemRow()">&#xFF0B; Add Row</button>
+        </div>
+        <div class="items-wrap"><table class="items-tbl">
+          <thead><tr><th>Code</th><th>Item #</th><th style="min-width:130px">Name</th><th>UOM</th><th>PCS</th><th>Qty</th><th>Total Qty</th><th>FOB</th><th>Cost MVR</th><th>Sell Price</th><th>Final Price</th><th>Margin%</th><th></th></tr></thead>
+          <tbody id="items-rows"></tbody>
+        </table></div>
+        <div class="inv-summary">
+          <div class="sum-box"><div class="sum-lbl">FOB Total</div><div class="sum-val v-teal" id="sum-fob">0.00</div></div>
+          <div class="sum-box"><div class="sum-lbl">Invoice (MVR)</div><div class="sum-val" id="sum-inv">MVR 0</div></div>
+          <div class="sum-box"><div class="sum-lbl">Total Cost</div><div class="sum-val" id="sum-cp">MVR 0</div></div>
+          <div class="sum-box"><div class="sum-lbl">Projected Sales</div><div class="sum-val v-green" id="sum-rp">MVR 0</div></div>
+          <div class="sum-box"><div class="sum-lbl">Avg Margin</div><div class="sum-val v-amber" id="sum-mgn">0%</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="window.closeModal('invoice-modal')">Cancel</button>
+      <button class="btn btn-success" id="save-inv-btn" onclick="window.saveInvoice()">&#x1F4BE; Save Invoice</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="view-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div><div class="modal-title" id="vi-title">Invoice</div><div class="modal-sub" id="vi-sub"></div></div>
+      <div style="display:flex;gap:7px;align-items:center">
+        <button class="btn btn-ghost btn-sm" onclick="window.printInvoice()">&#x1F5A8; Print</button>
+        <button class="btn btn-ghost btn-sm" onclick="window.editCurrentInvoice()">&#x270F; Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="window.deleteCurrentInvoice()">&#x1F5D1; Delete</button>
+        <button class="modal-close" onclick="window.closeModal('view-modal')">&#x2715;</button>
+      </div>
+    </div>
+    <div class="modal-body" id="vi-body" style="overflow:auto;max-height:78vh"></div>
+  </div>
+</div>
+<div class="modal-overlay" id="plan-modal">
+  <div class="modal" style="max-width:1100px">
+    <div class="modal-header">
+      <div><div class="modal-title" id="plan-modal-title">New Purchase Plan</div><div class="modal-sub">Define approved items, quantities, and budget before purchasing</div></div>
+      <button class="modal-close" onclick="window.closeModal('plan-modal')">&#x2715;</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:20px">
+        <div class="modal-sec-title">Plan Details</div>
+        <div class="grid3">
+          <div class="fg"><label>Plan Number</label><input type="text" id="plan-number" placeholder="PLAN-2025-001"></div>
+          <div class="fg"><label>Trip Name *</label><input type="text" id="plan-trip" placeholder="Dubai Buying Trip Jan 2025"></div>
+          <div class="fg"><label>Status</label><select id="plan-status-sel"><option value="draft">Draft</option><option value="approved">Approved</option><option value="closed">Closed</option></select></div>
+          <div class="fg"><label>Country</label><input type="text" id="plan-country" placeholder="UAE"></div>
+          <div class="fg"><label>Supplier</label><input type="text" id="plan-supplier" placeholder="Al Baraka Trading"></div>
+          <div class="fg"><label>Department</label><input type="text" id="plan-dept" placeholder="Garments / Accessories"></div>
+          <div class="fg"><label>Approved Budget (MVR) *</label><input type="number" id="plan-budget" placeholder="0.00" min="0" step="0.01" oninput="window.updatePlanTotals()"></div>
+          <div class="fg"><label>Approved By</label><input type="text" id="plan-approved-by" placeholder="Manager name"></div>
+          <div class="fg"><label>Date</label><input type="date" id="plan-date"></div>
+          <div class="fg full"><label>Notes</label><input type="text" id="plan-notes" placeholder="Purpose, special instructions..."></div>
+        </div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px">
+          <div class="modal-sec-title" style="margin-bottom:0;border:none;padding:0">Approved Items</div>
+          <button class="btn btn-outline btn-sm" onclick="window.addPlanItemRow()">&#xFF0B; Add Item</button>
+        </div>
+        <div class="plan-items-wrap"><table class="plan-items-tbl">
+          <thead><tr><th>Code</th><th style="min-width:130px">Item Name</th><th>Category</th><th>UOM</th><th>Appr.Qty</th><th>Appr.FOB</th><th>Cost Rate</th><th>Cost Value</th><th>Appr.Sell</th><th>Priority</th><th>Status</th><th></th></tr></thead>
+          <tbody id="plan-items-rows"></tbody>
+        </table></div>
+        <div class="inv-summary" style="margin-top:13px">
+          <div class="sum-box"><div class="sum-lbl">Items</div><div class="sum-val" id="plan-sum-items">0</div></div>
+          <div class="sum-box"><div class="sum-lbl">Total Qty</div><div class="sum-val" id="plan-sum-qty">0</div></div>
+          <div class="sum-box"><div class="sum-lbl">Planned Cost</div><div class="sum-val" id="plan-sum-cost">MVR 0</div></div>
+          <div class="sum-box"><div class="sum-lbl">Budget</div><div class="sum-val v-teal" id="plan-sum-budget">MVR 0</div></div>
+          <div class="sum-box"><div class="sum-lbl">Remaining</div><div class="sum-val v-green" id="plan-sum-rem">MVR 0</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="window.closeModal('plan-modal')">Cancel</button>
+      <button class="btn btn-success" id="save-plan-btn" onclick="window.savePlan()">&#x1F4BE; Save Plan</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="view-plan-modal">
+  <div class="modal" style="max-width:1000px">
+    <div class="modal-header">
+      <div><div class="modal-title" id="vp-title">Purchase Plan</div><div class="modal-sub" id="vp-sub"></div></div>
+      <div style="display:flex;gap:7px;align-items:center">
+        <button class="btn btn-ghost btn-sm" onclick="window._doCompareFromView()">&#x1F4CA; Compare</button>
+        <button class="btn btn-ghost btn-sm" onclick="window._doEditFromView()">&#x270F; Edit</button>
+        <button class="modal-close" onclick="window.closeModal('view-plan-modal')">&#x2715;</button>
+      </div>
+    </div>
+    <div class="modal-body" id="vp-body" style="overflow:auto;max-height:75vh"></div>
+  </div>
+</div>
+<div class="modal-overlay" id="supplier-modal">
+  <div class="modal modal-sm">
+    <div class="modal-header"><div class="modal-title">Add Supplier</div><button class="modal-close" onclick="window.closeModal('supplier-modal')">&#x2715;</button></div>
+    <div class="modal-body">
+      <div class="grid2">
+        <div class="fg full"><label>Supplier Name *</label><input type="text" id="sup-name" placeholder="Al Baraka Trading LLC"></div>
+        <div class="fg"><label>Country</label><input type="text" id="sup-country" placeholder="UAE"></div>
+        <div class="fg"><label>Contact Person</label><input type="text" id="sup-contact"></div>
+        <div class="fg"><label>Phone</label><input type="text" id="sup-phone"></div>
+        <div class="fg"><label>Email</label><input type="email" id="sup-email"></div>
+        <div class="fg full"><label>Notes</label><textarea id="sup-notes" style="min-height:48px"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="window.closeModal('supplier-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="window.saveSupplier()">Save Supplier</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
