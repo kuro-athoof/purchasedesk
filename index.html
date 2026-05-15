@@ -41,6 +41,7 @@
     <div class="nav-item" data-view="dashboard"     onclick="window.showView('dashboard')"><span class="nav-icon">🏠</span><span class="nav-label">Dashboard</span></div>
     <div class="nav-item" data-view="plans"         onclick="window.showView('plans')"><span class="nav-icon">📋</span><span class="nav-label">Purchase Plans</span></div>
     <div class="nav-item" data-view="invoices"      onclick="window.showView('invoices')"><span class="nav-icon">🧾</span><span class="nav-label">Invoices</span></div>
+    <div class="nav-item" data-view="trips"         onclick="window.showView('trips')"><span class="nav-icon">&#x2708;&#xFE0F;</span><span class="nav-label">Trips</span></div>
     <div class="nav-item" data-view="comparison"    onclick="window.showView('comparison')"><span class="nav-icon">📊</span><span class="nav-label">Plan Comparison</span></div>
     <div class="nav-item" data-view="items"         onclick="window.showView('items')"><span class="nav-icon">📦</span><span class="nav-label">Items</span></div>
     <div class="nav-item" data-view="suppliers"     onclick="window.showView('suppliers')"><span class="nav-icon">🏪</span><span class="nav-label">Suppliers</span></div>
@@ -64,6 +65,7 @@
     <div class="topbar-left">
       <button class="hamburger-btn" onclick="window.toggleSidebar()">☰</button>
       <div class="topbar-title" id="view-title">Dashboard</div>
+      <select id="year-selector" style="border:1.5px solid var(--border);border-radius:7px;padding:4px 10px;font-family:var(--font);font-size:12px;cursor:pointer;background:var(--bg);color:var(--text);outline:none"></select>
       <span class="topbar-crumb" id="view-crumb">Overview</span>
     </div>
     <div class="topbar-right">
@@ -122,7 +124,25 @@
     </div>
   </div>
 
-  <div class="content" id="view-settings-view" style="display:none">
+  <!-- TRIPS VIEW -->
+  <div class="content" id="view-trips" style="display:none">
+    <div class="section-header">
+      <span class="section-title">Buying Trips</span>
+      <span class="pill" id="trip-count">0 trips</span>
+    </div>
+    <div class="table-card" style="overflow:auto">
+      <table>
+        <thead><tr>
+          <th>Trip Name</th><th>Country</th><th>Manager</th>
+          <th>Budget USD</th><th>Budget MVR</th><th>Actual MVR</th>
+          <th>Budget Status</th><th>Status</th><th style="text-align:center">Actions</th>
+        </tr></thead>
+        <tbody id="trip-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+    <div class="content" id="view-settings-view" style="display:none">
     <div class="section-header"><span class="section-title">Country Rate Master</span></div>
     <div class="formula-box" style="margin-bottom:18px">
       <strong>Cost Rate</strong> = (MVR/USD ÷ Ccy/USD) × (1+COF%) &nbsp;|&nbsp; <strong>Cost</strong> = FOB × Rate &nbsp;|&nbsp; <strong>Sell</strong> = Cost × (1+Markup%) &nbsp;|&nbsp; <strong>Final</strong> = Sell × (1+GST%)
@@ -133,11 +153,22 @@
         <div class="fg"><label>Country Name *</label><input type="text" id="cr-name" placeholder="United Arab Emirates"></div>
         <div class="fg"><label>Currency Code *</label><input type="text" id="cr-code" placeholder="AED" maxlength="6"></div>
         <div class="fg"><label>Symbol</label><input type="text" id="cr-sym" placeholder="د.إ" maxlength="6"></div>
-        <div class="fg"><label>Currency / USD *</label><input type="number" id="cr-cpy" placeholder="3.6725" step="0.0001" min="0.0001"></div>
-        <div class="fg"><label>MVR / USD *</label><input type="number" id="cr-mvr" placeholder="15.42" step="0.0001" min="0.0001"></div>
-        <div class="fg"><label>COF %</label><input type="number" id="cr-cof" placeholder="15" step="0.1" min="0"></div>
+        <div class="fg"><label>Currency / USD *</label><input type="number" id="cr-cpy" oninput="window.updateCrFormulaPreview()" placeholder="3.6725" step="0.0001" min="0.0001"></div>
+        <div class="fg"><label>MVR / USD *</label><input type="number" id="cr-mvr" oninput="window.updateCrFormulaPreview()" placeholder="15.42" step="0.0001" min="0.0001"></div>
+        <div class="fg"><label>COF %</label><input type="number" id="cr-cof" oninput="window.updateCrFormulaPreview()" placeholder="15" step="0.1" min="0"></div>
         <div class="fg"><label>Markup %</label><input type="number" id="cr-mup" placeholder="100" step="1" min="0"></div>
         <div class="fg"><label>GST %</label><input type="number" id="cr-gst" placeholder="8" step="0.1" min="0"></div>
+        <div class="fg">
+          <label>Formula Rate <span style="font-size:10px;color:var(--muted)">(auto-calculated, ref only)</span></label>
+          <div class="inv-h-ro" id="cr-formula-preview" style="font-style:italic;color:var(--muted)">&#x2014;</div>
+        </div>
+        <div class="fg">
+          <label style="color:var(--teal)">&#x2713; Final Used Rate <span style="font-size:10px;font-weight:400;color:var(--teal)">(editable, used for costing)</span></label>
+          <input type="number" id="cr-fur" placeholder="Defaults to formula rate"
+            step="0.0001" min="0" onfocus="this.select()"
+            style="border-color:var(--teal);font-family:var(--font-mono);font-weight:700"
+            oninput="this.dataset.autoFilled='false'">
+        </div>
         <div class="fg" style="justify-content:flex-end"><label>&nbsp;</label>
           <div style="display:flex;gap:7px">
             <button class="btn btn-ghost btn-sm" id="cr-cancel-btn" style="display:none" onclick="window.clearCrForm()">Cancel</button>
@@ -147,7 +178,27 @@
       </div>
     </div>
     <div class="table-card" style="overflow:auto">
-      <table><thead><tr><th>Country</th><th>Code</th><th>Symbol</th><th>Ccy/USD</th><th>MVR/USD</th><th>COF%</th><th>Markup%</th><th>GST%</th><th>Cost Rate</th><th style="text-align:center">Actions</th></tr></thead><tbody id="countries-tbody"></tbody></table>
+      <table><thead><tr><th>Country</th><th>Code</th><th>Symbol</th><th>Ccy/USD</th><th>MVR/USD</th><th>COF%</th><th>Markup%</th><th>GST%</th><th style="color:var(--muted)">Formula Rate</th><th style="color:var(--teal)">Final Used Rate</th><th style="text-align:center">Actions</th></tr></thead><tbody id="countries-tbody"></tbody></table>
+    </div>
+
+    <!-- UOM Settings -->
+    <div class="section-header" style="margin-top:28px">
+      <span class="section-title">Unit of Measure (UOM) List</span>
+      <button class="btn btn-ghost btn-sm" onclick="window.resetUomList()">Reset to Default</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+      These UOMs appear in the item entry dropdown. Add custom ones for your products (e.g. Muh, Roll, Bottle).
+    </div>
+    <div class="table-card" style="padding:20px">
+      <div style="display:flex;gap:10px;margin-bottom:16px;align-items:flex-end">
+        <div class="fg" style="flex:0 0 220px">
+          <label>Add New UOM</label>
+          <input type="text" id="new-uom-input" placeholder="e.g. Muh, Roll, Bottle…"
+            onkeydown="if(event.key==='Enter')window.addUom()">
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="window.addUom()" style="margin-bottom:1px">&#xFF0B; Add</button>
+      </div>
+      <div id="uom-list-display" style="max-height:280px;overflow-y:auto"></div>
     </div>
   </div>
 
@@ -188,71 +239,143 @@
 </div></div></div>
 
 <div class="modal-overlay" id="invoice-modal">
-  <div class="modal">
+  <div class="modal" style="max-width:1200px">
     <div class="modal-header">
-      <div><div class="modal-title" id="modal-title">New Invoice</div><div class="modal-sub">Select country of origin, then add line items</div></div>
+      <div>
+        <div class="modal-title" id="modal-title">New Invoice</div>
+        <div class="modal-sub">Complete the invoice header, select country to load rates, then enter line items</div>
+      </div>
       <button class="modal-close" onclick="window.closeModal('invoice-modal')">&#x2715;</button>
     </div>
-    <div class="modal-body">
-      <div style="margin-bottom:20px">
-        <div class="modal-sec-title">Invoice Details</div>
-        <div class="grid3">
-          <div class="fg"><label>Invoice Number</label><input type="text" id="inv-number" placeholder="INV-2025-001"></div>
-          <div class="fg"><label>Supplier / Shop Name *</label><input type="text" id="inv-supplier" placeholder="Al Baraka Trading" list="supplier-list"><datalist id="supplier-list"></datalist></div>
-          <div class="fg"><label>Status</label><select id="inv-status"><option value="received">Received</option><option value="pending">Pending</option><option value="partial">Partial</option></select></div>
-          <div class="fg"><label>Order Date</label><input type="date" id="inv-order-date"></div>
-          <div class="fg"><label>Received Date *</label><input type="date" id="inv-received-date"></div>
-          <div class="fg"><label>Payment Terms</label><input type="text" id="inv-payment" placeholder="30 days, LC, TT..."></div>
-          <div class="fg"><label>Freight / Shipping (MVR)</label><input type="number" id="inv-freight" value="0" min="0" oninput="window.updateTotals()"></div>
-          <div class="fg span2"><label>Notes</label><input type="text" id="inv-notes" placeholder="Notes..."></div>
+    <div class="modal-body" style="padding:0">
+
+      <!-- ── INVOICE HEADER ── -->
+      <div class="inv-header-panel">
+        <div class="inv-header-grid">
+
+          <!-- Row 1: Invoice meta -->
+          <div class="fg"><label>Invoice No</label>
+            <input type="text" id="h-number" placeholder="INV-2025-001" onfocus="this.select()"></div>
+
+          <div class="fg"><label>Supplier *</label>
+            <input type="text" id="h-supplier" placeholder="Al Baraka Trading" list="supplier-list">
+            <datalist id="supplier-list"></datalist></div>
+
+          <div class="fg"><label>Country *</label>
+            <select id="h-country" onchange="window.onCountrySelect()">
+              <option value="">&#x2014; Select Country &#x2014;</option>
+            </select></div>
+
+          <div class="fg"><label>Link to Trip</label>
+            <select id="h-trip" style="width:100%">
+              <option value="">&#x2014; Optional &#x2014;</option>
+            </select></div>
+
+          <div class="fg"><label>Invoice Date *</label>
+            <input type="date" id="h-invoice-date"></div>
+
+          <div class="fg"><label>Order Date</label>
+            <input type="date" id="h-order-date"></div>
+
+          <div class="fg"><label>Status</label>
+            <select id="h-status">
+              <option value="received">Received</option>
+              <option value="pending">Pending</option>
+              <option value="partial">Partial</option>
+            </select></div>
+
+
+
+          <div class="fg"><label>Freight / Shipping (MVR)</label>
+            <input type="number" id="h-freight" value="0" min="0" step="0.01"
+              oninput="window.updateFooterTotals()" onfocus="this.select()"></div>
+
+          <div class="fg" style="grid-column:span 2"><label>Notes</label>
+            <input type="text" id="h-notes" placeholder="Remarks, quality notes&#x2026;" onfocus="this.select()"></div>
+
         </div>
       </div>
-      <div style="margin-bottom:20px">
-        <div class="modal-sec-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <span>Country of Origin &amp; Pricing Rates</span>
-          <button class="btn btn-ghost btn-xs" onclick="window.closeModal('invoice-modal');window.showView('settings-view')" tabindex="-1">&#x270F; Edit Rates</button>
-        </div>
-        <div style="display:flex;align-items:flex-end;gap:12px;margin-bottom:12px">
-          <div class="fg" style="flex:0 0 300px">
-            <label>Country of Origin *</label>
-            <select id="inv-country-origin" onchange="window.onCountrySelect()"><option value="">&#x2014; Select Country &#x2014;</option></select>
-          </div>
-          <div id="country-note" style="font-size:12px;color:var(--muted);padding-bottom:9px;display:none">Rates from <strong>Country Rate Master</strong>. <span style="color:var(--teal);cursor:pointer" onclick="window.closeModal('invoice-modal');window.showView('settings-view')">Edit there.</span></div>
-        </div>
-        <div id="rate-display" style="display:none">
-          <div class="rate-panel-wrap">
-            <div class="rate-panel-head">
-              <span class="rate-panel-label" id="rp-title">RATE DETAILS</span>
-              <span class="rate-panel-badge">Cost Rate: <span id="rp-rate">&#x2014;</span></span>
-            </div>
-            <div class="rate-panel-grid">
-              <div class="rp-cell"><div class="rp-lbl">Currency</div><div class="rp-val" id="rp-currency">&#x2014;</div></div>
-              <div class="rp-cell"><div class="rp-lbl">Ccy/USD</div><div class="rp-val" id="rp-cpy">&#x2014;</div></div>
-              <div class="rp-cell"><div class="rp-lbl">MVR/USD</div><div class="rp-val" id="rp-mvr">&#x2014;</div></div>
-              <div class="rp-cell"><div class="rp-lbl">COF%</div><div class="rp-val" id="rp-cof">&#x2014;</div></div>
-              <div class="rp-cell"><div class="rp-lbl">Markup%</div><div class="rp-val" id="rp-mup">&#x2014;</div></div>
-              <div class="rp-cell"><div class="rp-lbl">GST%</div><div class="rp-val" id="rp-gst">&#x2014;</div></div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px">
-          <div class="modal-sec-title" style="margin-bottom:0;border:none;padding:0">Line Items</div>
+
+            <div class="inv-table-section">
+        <div class="inv-table-toolbar">
+          <span style="font-size:13px;font-weight:600;color:var(--text)">Line Items</span>
           <button class="btn btn-outline btn-sm" onclick="window.addItemRow()">&#xFF0B; Add Row</button>
         </div>
-        <div class="items-wrap"><table class="items-tbl">
-          <thead><tr><th>Code</th><th>Item #</th><th style="min-width:130px">Name</th><th>UOM</th><th>PCS</th><th>Qty</th><th>Total Qty</th><th>FOB</th><th>Cost MVR</th><th>Sell Price</th><th>Final Price</th><th>Margin%</th><th></th></tr></thead>
-          <tbody id="items-rows"></tbody>
-        </table></div>
-        <div class="inv-summary">
-          <div class="sum-box"><div class="sum-lbl">FOB Total</div><div class="sum-val v-teal" id="sum-fob">0.00</div></div>
-          <div class="sum-box"><div class="sum-lbl">Invoice (MVR)</div><div class="sum-val" id="sum-inv">MVR 0</div></div>
-          <div class="sum-box"><div class="sum-lbl">Total Cost</div><div class="sum-val" id="sum-cp">MVR 0</div></div>
-          <div class="sum-box"><div class="sum-lbl">Projected Sales</div><div class="sum-val v-green" id="sum-rp">MVR 0</div></div>
-          <div class="sum-box"><div class="sum-lbl">Avg Margin</div><div class="sum-val v-amber" id="sum-mgn">0%</div></div>
+
+        <div class="inv-table-wrap">
+          <table class="erp-tbl">
+            <thead>
+              <tr>
+                <th style="width:26px">#</th>
+                <th title="Category / Design No">Category</th>
+                <th>Item Code</th>
+                <th style="min-width:110px">Item Name</th>
+                <th>Details</th>
+                <th>UOM</th>
+                <th title="Units per roll/package (e.g. 30 yards per roll)">Unit</th>
+                <th title="Number of rolls / packages ordered">Qty</th>
+                <th title="Total Qty = Unit &#xD7; Qty">Total Qty</th>
+                <th title="PCS / Roll count received (optional)">PCS</th>
+                <th title="FOB price per roll/item in supplier currency">FOB</th>
+                <th title="Invoice Total = FOB &#xD7; Qty">Inv. Total</th>
+                <th title="Cost = (Inv.Total &#xF7; Total Qty) &#xD7; Rate">Cost Price</th>
+                <th title="Markup % per item">Markup %</th>
+                <th title="GST applicable for this item" style="min-width:42px">GST</th>
+                <th title="Sell Inc GST = Cost &#xD7; (1 + Markup%)">Sell Inc GST</th>
+                <th title="Editable &#x2014; defaults to Sell Inc GST rounded to 0.50">Final Price &#x270F;</th>
+                <th title="Regular Price = (100 &#xD7; Final) &#xF7; (100 + GST%)">Non-Tax Price</th>
+                <th title="Margin = (Regular &#x2212; Cost) &#xF7; Regular &#xD7; 100">Margin %</th>
+                <th title="Total Cost = Cost Price &#xD7; Total Qty">Total Cost</th>
+                <th title="Total Regular = Non-Tax Price &#xD7; Total Qty">Total Reg.</th>
+                <th>Notes</th>
+                <th style="width:28px"></th>
+              </tr>
+            </thead>
+            <tbody id="items-rows"></tbody>
+          </table>
+        </div>
+
+        <!-- ── STICKY FOOTER TOTALS ── -->
+        <div class="inv-footer-totals">
+          <div class="ft-item">
+            <div class="ft-lbl">Total FOB</div>
+            <div class="ft-val t-teal" id="ft-fob">0.00</div>
+          </div>
+          <div class="ft-item">
+            <div class="ft-lbl">Invoice MVR</div>
+            <div class="ft-val" id="ft-inv">MVR 0</div>
+          </div>
+          <div class="ft-item">
+            <div class="ft-lbl">Total Qty</div>
+            <div class="ft-val" id="ft-qty">0</div>
+          </div>
+          <div class="ft-item">
+            <div class="ft-lbl">Total Cost</div>
+            <div class="ft-val" id="ft-cp">MVR 0</div>
+          </div>
+          <div class="ft-item">
+            <div class="ft-lbl">Total Revenue</div>
+            <div class="ft-val t-green" id="ft-rp">MVR 0</div>
+          </div>
+          <div class="ft-item">
+            <div class="ft-lbl">Expected Profit</div>
+            <div class="ft-val" id="ft-profit">MVR 0</div>
+          </div>
+          <div class="ft-item">
+            <div class="ft-lbl">Avg Markup %</div>
+            <div class="ft-val" id="ft-avg-mup">0%</div>
+          </div>
+          <div class="ft-item">
+            <div class="ft-lbl">Avg Margin %</div>
+            <div class="ft-val" id="ft-avg-mgn">0%</div>
+          </div>
+          <div class="ft-item">
+            <div class="ft-lbl">Items</div>
+            <div class="ft-val" id="ft-items">0</div>
+          </div>
         </div>
       </div>
+
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="window.closeModal('invoice-modal')">Cancel</button>
@@ -260,6 +383,7 @@
     </div>
   </div>
 </div>
+
 <div class="modal-overlay" id="view-modal">
   <div class="modal">
     <div class="modal-header">
@@ -333,6 +457,70 @@
     <div class="modal-body" id="vp-body" style="overflow:auto;max-height:75vh"></div>
   </div>
 </div>
+
+<!-- TRIP NEW/EDIT MODAL -->
+<div class="modal-overlay" id="trip-modal">
+  <div class="modal modal-md">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="trip-modal-title">New Trip</div>
+        <div class="modal-sub">Create a buying trip to track vendors, invoices and budget</div>
+      </div>
+      <button class="modal-close" onclick="window.closeModal('trip-modal')">&#x2715;</button>
+    </div>
+    <div class="modal-body">
+      <div class="grid3">
+        <div class="fg"><label>Year</label>
+          <input type="number" id="trip-year" placeholder="2025" min="2020" max="2030"></div>
+        <div class="fg span2"><label>Trip Name *</label>
+          <input type="text" id="trip-name" placeholder="Dubai Buying Trip Jan 2025" onfocus="this.select()"></div>
+        <div class="fg"><label>Country</label>
+          <select id="trip-country">
+            <option value="">&#x2014; Select &#x2014;</option>
+          </select></div>
+        <div class="fg"><label>Purchase Manager</label>
+          <input type="text" id="trip-manager" placeholder="Manager name" onfocus="this.select()"></div>
+        <div class="fg"><label>Status</label>
+          <select id="trip-status">
+            <option>Draft</option><option>Submitted</option><option>Office Review</option>
+            <option>Approved</option><option>Purchasing</option>
+            <option>Receiving</option><option>Pricing</option><option>Closed</option>
+          </select></div>
+        <div class="fg"><label>Travel Date From</label>
+          <input type="date" id="trip-date-from"></div>
+        <div class="fg"><label>Travel Date To</label>
+          <input type="date" id="trip-date-to"></div>
+        <div class="fg"><label>Approved Budget USD</label>
+          <input type="number" id="trip-budget-usd" placeholder="0.00" step="0.01" min="0" onfocus="this.select()"></div>
+        <div class="fg"><label>Approved Budget MVR</label>
+          <input type="number" id="trip-budget-mvr" placeholder="0.00" step="0.01" min="0" onfocus="this.select()"></div>
+        <div class="fg full"><label>Notes</label>
+          <input type="text" id="trip-notes" placeholder="Trip notes, objectives..."></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="window.closeModal('trip-modal')">Cancel</button>
+      <button class="btn btn-success" id="save-trip-btn" onclick="window.saveTrip()">&#x1F4BE; Save Trip</button>
+    </div>
+  </div>
+</div>
+
+<!-- TRIP DETAIL MODAL -->
+<div class="modal-overlay" id="trip-detail-modal">
+  <div class="modal" style="max-width:900px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="trip-detail-title">Trip Detail</div>
+      </div>
+      <div style="display:flex;gap:7px;align-items:center">
+        <button class="btn btn-ghost btn-sm" onclick="window.editTrip(window._tripViewId||'');window.closeModal('trip-detail-modal')">&#x270F; Edit</button>
+        <button class="modal-close" onclick="window.closeModal('trip-detail-modal')">&#x2715;</button>
+      </div>
+    </div>
+    <div class="modal-body" id="trip-detail-body" style="max-height:75vh;overflow:auto"></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="supplier-modal">
   <div class="modal modal-sm">
     <div class="modal-header"><div class="modal-title">Add Supplier</div><button class="modal-close" onclick="window.closeModal('supplier-modal')">&#x2715;</button></div>
