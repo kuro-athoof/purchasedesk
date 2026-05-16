@@ -17,6 +17,10 @@ import { renderPlanList, openNewPlan, editPlan, savePlan, deletePlan, viewPlan,
          printComparison } from './plans.js';
 import { renderTripList, openNewTrip, editTrip, saveTrip, deleteTrip,
          viewTrip } from './trips/trips.js';
+import { openNewPurchasePlan, savePurchasePlanMeta, deletePurchasePlan,
+         openPurchasePlan, editPurchasePlanMeta, renderPurchasePlanView,
+         savePurchasePlan, ppExportExcel, ppImportExcel,
+         renderPurchasePlanList } from './purchasePlan/purchasePlan.js';
 import { initStaffManager, destroyStaffManager, renderStaffTable, createStaff,
          toggleStaff, removeStaff, showPasswordNote } from './staff.js';
 import { fmv, fmt, getUomList, saveUomList, DEFAULT_UOM_LIST, toast } from './utils.js';
@@ -67,6 +71,9 @@ function startListeners() {
   _unsubs.push(listenCollection('trips', data=>{
     S.trips=data.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
     renderTripList(); renderDashboard();
+  }));
+  _unsubs.push(listenCollection('purchasePlans', data => {
+    S.purchasePlans = data.sort((a,b)=>(b.updatedAt||b.createdAt||'').localeCompare(a.updatedAt||a.createdAt||''));
   }));
   if (_profile?.role==='owner') initStaffManager();
 }
@@ -164,12 +171,12 @@ function renderDashboard() {
 }
 
 // ── VIEWS ─────────────────────────────────────────────────
-const ALL_VIEWS=['dashboard','invoices','items','suppliers','plans','comparison',
-                 'settings-view','staff','trips'];
+const ALL_VIEWS=['dashboard','invoices','items','suppliers','comparison',
+                 'settings-view','staff','trips','purchase-plan'];
 const VIEW_TITLES={
   dashboard:'Dashboard', invoices:'Invoices', items:'All Items', suppliers:'Suppliers',
-  plans:'Purchase Plans', comparison:'Plan Comparison', 'settings-view':'Country Rates',
-  staff:'Staff Accounts', trips:'Trips'
+  comparison:'Plan Comparison', 'settings-view':'Country Rates',
+  staff:'Staff Accounts', trips:'Trips', 'purchase-plan':'Purchase Plan'
 };
 
 window.showView = function(v) {
@@ -181,7 +188,7 @@ window.showView = function(v) {
   document.getElementById('view-title').textContent=VIEW_TITLES[v]||v;
   document.getElementById('view-crumb').textContent={
     dashboard:'Overview', invoices:'All records', trips:'Buying trips by year',
-    items:'All purchased items', suppliers:'Directory', plans:'Purchase planning',
+    items:'All purchased items', suppliers:'Directory',
     comparison:'Plan vs Actual', 'settings-view':'Rate configuration', staff:'Owner only'
   }[v]||'';
   document.querySelectorAll('.nav-item[data-view]').forEach(el=>
@@ -191,7 +198,6 @@ window.showView = function(v) {
   const btnMap={
     invoices:['＋ New Invoice',openNewInvoice],
     suppliers:['＋ Add Supplier',openAddSupplier],
-    plans:['＋ New Plan',openNewPlan],
     trips:['＋ New Trip',openNewTrip],
   };
   if(btnMap[v]){btn.style.display='';btn.textContent=btnMap[v][0];btn.onclick=btnMap[v][1];}
@@ -201,10 +207,10 @@ window.showView = function(v) {
   if(v==='invoices')      renderInvoiceList();
   if(v==='items')         renderAllItems();
   if(v==='suppliers')     renderSuppliers();
-  if(v==='plans')         renderPlanList();
   if(v==='settings-view'){renderCountries();window.renderUomSettings();}
   if(v==='staff')         renderStaffTable();
   if(v==='trips')        {renderYearSelector();renderTripList();}
+  if(v==='purchase-plan') renderPurchasePlanView();
   closeSidebar();
 };
 
@@ -326,6 +332,19 @@ document.getElementById('invoice-modal')?.addEventListener('mouseenter',()=>{
   const names=[...new Set([...S.suppliers.map(s=>s.name),...S.invoices.map(i=>i.supplier).filter(Boolean)])];
   dl.innerHTML=names.map(n=>`<option value="${n}">`).join('');
 });
+
+// Open purchase plan from trip detail modal
+window._openTripPlan = function() {
+  const tripId = window._tripViewId;
+  if (!tripId) return;
+  document.getElementById('trip-detail-modal')?.classList.remove('open');
+  const existing = (S.purchasePlans||[]).find(p=>p.tripId===tripId);
+  if (existing) {
+    window.openPurchasePlan(existing.id);
+  } else {
+    window.openNewPurchasePlan(tripId);
+  }
+};
 
 document.getElementById('search-input')?.addEventListener('input',renderInvoiceList);
 document.getElementById('filter-status')?.addEventListener('change',renderInvoiceList);

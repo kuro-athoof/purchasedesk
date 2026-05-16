@@ -39,7 +39,7 @@
   <nav class="nav">
     <div class="nav-sec">Workspace</div>
     <div class="nav-item" data-view="dashboard"     onclick="window.showView('dashboard')"><span class="nav-icon">🏠</span><span class="nav-label">Dashboard</span></div>
-    <div class="nav-item" data-view="plans"         onclick="window.showView('plans')"><span class="nav-icon">📋</span><span class="nav-label">Purchase Plans</span></div>
+    <div class="nav-item" data-view="purchase-plan" onclick="window.showView('purchase-plan')"><span class="nav-icon">📋</span><span class="nav-label">Purchase Plans</span></div>
     <div class="nav-item" data-view="invoices"      onclick="window.showView('invoices')"><span class="nav-icon">🧾</span><span class="nav-label">Invoices</span></div>
     <div class="nav-item" data-view="trips"         onclick="window.showView('trips')"><span class="nav-icon">&#x2708;&#xFE0F;</span><span class="nav-label">Trips</span></div>
     <div class="nav-item" data-view="comparison"    onclick="window.showView('comparison')"><span class="nav-icon">📊</span><span class="nav-label">Plan Comparison</span></div>
@@ -80,13 +80,7 @@
     <div id="dashboard-body"><div class="empty-state"><div class="empty-icon">🏠</div><div class="empty-title">Loading…</div></div></div>
   </div>
 
-  <div class="content" id="view-plans" style="display:none">
-    <div class="section-header"><span class="section-title">Purchase Plans</span><span class="pill" id="plan-count">0 plans</span></div>
-    <div class="table-card" style="overflow:auto">
-      <table><thead><tr><th>Plan #</th><th>Trip Name</th><th>Supplier</th><th>Dept.</th><th>Approved Budget</th><th>Actual Cost</th><th>Approved By</th><th>Status</th><th style="text-align:center">Actions</th></tr></thead><tbody id="plan-tbody"></tbody></table>
-    </div>
-  </div>
-
+  <!-- view-plans removed: redirected to purchase-plan -->
   <div class="content" id="view-invoices" style="display:none">
     <div class="filter-bar">
       <div class="search-wrap"><input type="text" placeholder="Search invoices…" id="search-input" style="min-width:200px"></div>
@@ -139,6 +133,15 @@
         </tr></thead>
         <tbody id="trip-tbody"></tbody>
       </table>
+    </div>
+  </div>
+
+    <!-- PURCHASE PLAN WORKSPACE -->
+  <div class="content" id="view-purchase-plan" style="display:none;padding:0">
+    <div class="empty-state"><div class="empty-icon">📋</div>
+      <div class="empty-title">No plan open</div>
+      <div class="empty-sub">Go to Trips and open a purchase plan</div>
+      <div style="margin-top:16px"><button class="btn btn-primary" onclick="window.showView('trips')">Go to Trips</button></div>
     </div>
   </div>
 
@@ -518,6 +521,38 @@
       </div>
     </div>
     <div class="modal-body" id="trip-detail-body" style="max-height:75vh;overflow:auto"></div>
+  </div>
+</div>
+
+<!-- PURCHASE PLAN META MODAL -->
+<div class="modal-overlay" id="pp-meta-modal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div class="modal-title" id="pp-meta-title">New Purchase Plan</div>
+      <button class="modal-close" onclick="window.closeModal('pp-meta-modal')">&#x2715;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="pp-meta-id">
+      <input type="hidden" id="pp-meta-tripId">
+      <div class="grid2">
+        <div class="fg full"><label>Plan Name *</label>
+          <input type="text" id="pp-meta-planName" placeholder="Dubai Trip 2025 — Purchase Plan"></div>
+        <div class="fg"><label>Requested Budget (USD)</label>
+          <input type="number" id="pp-meta-reqBudgetUsd" placeholder="0.00" step="0.01" min="0"></div>
+        <div class="fg"><label>Approved Budget (USD)</label>
+          <input type="number" id="pp-meta-apprBudgetUsd" placeholder="0.00" step="0.01" min="0"></div>
+        <div class="fg"><label>Approved By</label>
+          <input type="text" id="pp-meta-apprBy" placeholder="Name"></div>
+        <div class="fg"><label>Approval Date</label>
+          <input type="date" id="pp-meta-apprDate"></div>
+        <div class="fg full"><label>Office Note</label>
+          <input type="text" id="pp-meta-officeNote" placeholder="Overall office note…"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="window.closeModal('pp-meta-modal')">Cancel</button>
+      <button class="btn btn-primary" id="pp-meta-save-btn" onclick="window.savePurchasePlanMeta()">Save</button>
+    </div>
   </div>
 </div>
 
